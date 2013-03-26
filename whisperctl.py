@@ -73,22 +73,27 @@ class WhisperCtl:
                     matches.append(line.strip())
         except IOError as ioe:
             raise ioe
-        print '-----\n%d matches found' % len(matches)
+        #print '-----\n%d matches found' % len(matches)
         return matches
 
     def info(self, *args):
         '''
         Wrapper for `whisper-info.py metric`
         '''
-        metric = args[0]
-        cmd = [self.bins['info'], self.metricPath(metric)]
-        # run cmd
-        s = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        metricInfo = s.stdout.read()
-        print '\n%s' %(metric)
-        print ('-' * len(metric))
-        print(metricInfo.strip())
-        return metricInfo
+        metricInfoList = []
+        metrics = self.parseMetricWC(args)
+        if not metrics:
+            metrics = self.parseMetricExp(args)
+        for metric in metrics:
+            cmd = [self.bins['info'], self.metricPath(metric)]
+            # run cmd
+            s = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+            metricInfo = s.stdout.read()
+            print '\n%s' %(metric)
+            print ('-' * len(metric))
+            print(metricInfo.strip())
+            metricInfoList.append(metricInfo)
+        return metricInfoList
 
 
     def dump(self, *args):
@@ -183,6 +188,32 @@ class WhisperCtl:
         return os.path.join(self.storage,
             metric.replace('.', os.path.sep) + '.wsp');
 
+    def parseMetricExp(self, args):
+        '''
+        determine metric or metrics if '-e' flag for reg expression is set
+        '''
+        metrics = []
+        if args[0] == '-e':
+            args = args[1:]
+            pattern = args[0]
+            with self.silence():
+                metrics = self.search(pattern)
+        else:
+            metrics.append(args[0])
+        return metrics
+
+    def parseMetricWC(self, args):
+        '''
+        allow for wildcard completion. only accepts wildcard as a suffix
+        '''
+        if args[0].endswith('*'):
+            with self.silence():
+                pattern = '^%s.*$' %(args[0].replace('.', '[.]'))
+                metrics = self.search(pattern)
+            return metrics
+        else:
+            return None
+
     def runTool(self, tool, args):
         try:
             getattr(self, tool)(*args)
@@ -212,6 +243,11 @@ whisperctl commands
     info        print whisper metric information
     resize      change data retentions for metric
     xff         change xFilesFactor value for metric
+
+    you may search for matching metric names using '-e pattern' instead
+    of a metric name
+    wildcard suffixes can also be matched:
+    i.e.    whisperctl info "stats.test.*"
     '''
         raise IndexError('whisperctl <tool> [<metric>]')
 
