@@ -160,7 +160,7 @@ class WhisperCtl:
             raise
         metricInfoList = []
         with self.silence():
-            metricInfoList.append(self.info(metric))
+            metricInfoList = self.info(metric)
         for metricInfo in metricInfoList:
             metricStanzas = metricInfo.strip().split('\n\n')
             ret = []    # time retentions
