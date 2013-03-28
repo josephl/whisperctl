@@ -158,20 +158,22 @@ class WhisperCtl:
             xffVal = args[1]
         except:
             raise
+        metricInfoList = []
         with self.silence():
-            metricInfo = self.info(metric)
-        metricStanzas = metricInfo.strip().split('\n\n')
-        ret = []    # time retentions
-        for ms in metricStanzas[1:]:
-            match = re.search('secondsPerPoint: ([0-9]*)\n'\
-                              'points: ([0-9]*)', ms)
-            if match:
-                spp, pts = map(int, match.groups())
-                s = '%d:%d' %(spp, pts)
-                ret.append(s)
-        resizeCmd = [metric, '--xFilesFactor=' + xffVal]
-        resizeCmd += ret
-        self.resize(*resizeCmd)
+            metricInfoList.append(self.info(metric))
+        for metricInfo in metricInfoList:
+            metricStanzas = metricInfo.strip().split('\n\n')
+            ret = []    # time retentions
+            for ms in metricStanzas[1:]:
+                match = re.search('secondsPerPoint: ([0-9]*)\n'\
+                                  'points: ([0-9]*)', ms)
+                if match:
+                    spp, pts = map(int, match.groups())
+                    s = '%d:%d' %(spp, pts)
+                    ret.append(s)
+            resizeCmd = [metric, '--xFilesFactor=' + xffVal]
+            resizeCmd += ret
+            self.resize(*resizeCmd)
         
 
     def metricPath(self, *args):
