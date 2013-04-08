@@ -95,6 +95,13 @@ class WhisperCtl:
             metricInfoList.append(metricInfo)
         return metricInfoList
 
+    
+    def findall(self, path):
+        '''
+        return list of all metrics that start with path
+        '''
+        return self.search('^%s[.]' %(path))
+
 
     def dump(self, *args):
         '''
