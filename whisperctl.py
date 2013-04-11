@@ -10,7 +10,7 @@ import os
 import subprocess
 import re
 import sys
-from mute import Mute
+import logging
 from datetime import datetime
 
 
@@ -28,6 +28,8 @@ class WhisperCtl:
                 'resize': os.path.join(self.root, 'bin',
                                        'whisper-resize.py'),
             }
+        logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger(__name__)
 
     def index(self, *args):
         '''
@@ -69,7 +71,7 @@ class WhisperCtl:
             for line in indexes:
                 match = re.search(pattern, line)
                 if match:
-                    print line,
+                    self.logger.info(line.strip())
                     matches.append(line.strip())
         except IOError as ioe:
             raise ioe
@@ -89,9 +91,9 @@ class WhisperCtl:
             # run cmd
             s = subprocess.Popen(cmd, stdout=subprocess.PIPE)
             metricInfo = s.stdout.read()
-            print '\n%s' %(metric)
-            print ('-' * len(metric))
-            print(metricInfo.strip())
+            self.logger.info('\n%s' %(metric))
+            self.logger.info(('-' * len(metric)))
+            self.logger.info(metricInfo.strip())
             metricInfoList.append(metricInfo)
         return metricInfoList
 
@@ -119,18 +121,18 @@ class WhisperCtl:
             if m:
                 d = m.groupdict()
                 date = int(d['date'])
-                print '%s  |  %s'\
-                %(datetime.fromtimestamp(date),
-                  d['val'])
+                self.logger.info('%s  |  %s' % (
+                    datetime.fromtimestamp(date), d['val']))
                 if dateRange['min'] is None or\
                    date < dateRange['min']:
                     dateRange['min'] = date
                 if dateRange['max'] is None or\
                    date > dateRange['max']:
                     dateRange['max'] = date
-        print '-----\nRange of dates:'
-        print '(%s, %s)' %(datetime.fromtimestamp(dateRange['min']),
-                           datetime.fromtimestamp(dateRange['max']))
+        self.logger.info('-----\nRange of dates:')
+        self.logger.info('(%s, %s)' % (
+            datetime.fromtimestamp(dateRange['min']),
+            datetime.fromtimestamp(dateRange['max'])))
 
     def resize(self, *args):
         '''
@@ -166,8 +168,7 @@ class WhisperCtl:
         except:
             raise
         metricInfoList = []
-        with self.silence():
-            metricInfoList = self.info(metric)
+        metricInfoList = self.info(metric)
         for metricInfo in metricInfoList:
             metricStanzas = metricInfo.strip().split('\n\n')
             ret = []    # time retentions
@@ -205,8 +206,7 @@ class WhisperCtl:
         if args[0] == '-e':
             args = args[1:]
             pattern = args[0]
-            with self.silence():
-                metrics = self.search(pattern)
+            metrics = self.search(pattern)
         else:
             metrics.append(args[0])
         return metrics
@@ -216,9 +216,8 @@ class WhisperCtl:
         allow for wildcard completion. only accepts wildcard as a suffix
         '''
         if args[0].endswith('*'):
-            with self.silence():
-                pattern = '^%s.*$' %(args[0].replace('.', '[.]'))
-                metrics = self.search(pattern)
+            pattern = '^%s.*$' %(args[0].replace('.', '[.]'))
+            metrics = self.search(pattern)
             return metrics
         else:
             return None
@@ -228,13 +227,6 @@ class WhisperCtl:
             getattr(self, tool)(*args)
         except TypeError as te:
             raise te
-
-    def silence(self):
-        '''
-        returns Mute object to redirect stdout and write to devnull
-        within a 'with' segment
-        '''
-        return Mute()
 
         
 if __name__ == '__main__':
