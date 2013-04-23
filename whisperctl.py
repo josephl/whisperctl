@@ -48,7 +48,6 @@ def index(*args):
                 metrics.append(
                     os.path.join(pathto,
                         fname).replace('/', '.') + '\n')
-    #metrics.sort()
     with open(index_file, 'w') as ifd:
         ifd.writelines(metrics)
 
@@ -176,6 +175,11 @@ def metric_path(metric):
     Determine path for metric in '.' form or determine if supplied
     metric name is already a valid path
     """
+    if '/' in metric:
+        if os.path.exists(metric):
+            return metric
+        elif os.path.exists('%s.wsp' % (metric)):
+            return '%s.wsp' % (metric)
     return os.path.join(whisper_root,
                         '%s.wsp' % (metric.replace('.', os.path.sep)))
 

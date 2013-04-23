@@ -1,1 +1,0 @@
-from whisperctl import WhisperCtl
