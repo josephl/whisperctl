@@ -6,10 +6,7 @@ setup(
     packages = ['whisperctl'],
     author = 'Joseph Lee',
     author_email = 'josephl@cecs.pdx.edu',
-    description = ('A tool for managing Whisper databases used in '
-        'Graphite. Wrappers for whisper-*.py scripts packaged '
-        'with Whisper as well as regex and wildcard completion for '
-        'managing multiple databases.'),
+    description = 'A tool for managing Whisper databases used in Graphite.',
     url = 'http://github.com/josephl/whisperctl',
     license = 'MIT',
     scripts = ['scripts/whisperctl'],
