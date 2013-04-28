@@ -6,79 +6,91 @@
 # metrics to be specified as they are in graphite
 # tools: index, search, info, dump
 
-import os
-import subprocess
-import re
-import sys
-import logging
 from datetime import datetime
-import ConfigParser
+from argparse import ArgumentParser
+import subprocess
+import os
+import re
+#import logging
+#import ConfigParser
 
+#config = ConfigParser.SafeConfigParser()
+#config.read('whisperctl.conf')
+#
+#logging.basicConfig(level=logging.INFO)
+#logger = logging.getLogger(__name__)
 
-config = ConfigParser.SafeConfigParser()
-config.read('whisperctl.conf')
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-whisper_root = config.get('whisper', 'PATH')
-index_file = config.get('whisper', 'INDEX')
-
+# default configs
+graphite_root = '/opt/graphite'
+whisper_root = os.path.join(graphite_root, 'storage/whisper')
 bins = {
-    'info': config.get('whisper', 'INFO'),
-    'dump': config.get('whisper', 'DUMP'),
-    'resize': config.get('whisper', 'RESIZE')
+    'info': os.path.join(graphite_root, 'bin/whisper-info.py'),
+    'dump': os.path.join(graphite_root, 'bin/whisper-dump.py'),
+    'resize': os.path.join(graphite_root, 'bin/whisper-resize.py'),
+    'agg': os.path.join(
+        graphite_root, 'bin/whisper-set-aggregation-method.py')
 }
 
 
-def index(*args):
+def index(**kwargs):
     """
     Walk through whisper tree, store sorted list of metrics by converting
-    file structure to graphite metric naming conventions
+    file structure to graphite metric naming conventions.
+    Return list if all metrics in graphite format.
     """
     wwalk = os.walk(whisper_root)
-    metrics = []
+    #metric = kwargs['metric']
 
+    metrics = []
     for d in iter(wwalk):
         pathto = d[0].replace(whisper_root, '', 1).lstrip('/')
-        for f in d[2]:
-            match = re.match('^(.*)[.]wsp$', f)
-            if match is not None:
-                fname = match.group(1)
-                metrics.append(
-                    os.path.join(pathto,
-                        fname).replace('/', '.') + '\n')
-    with open(index_file, 'w') as ifd:
-        ifd.writelines(metrics)
+        for fname in d[2]:
+            if fname.endswith('.wsp'):
+                metricName = re.sub('\.wsp$', '', os.path.join(
+                        pathto, fname).replace('/', '.'))
+                metrics.append(metricName)
 
-def search(*args):
+    # Write out metrics to index file
+    #with open(index_file, 'w') as ifd:
+    #    ifd.write('\n'.join(metrics))
+
+    return metrics
+
+def search(**kwargs):
     """
     Run regex search on whisper index for metrics
     args: regex pattern(s). Accetps regex string or iterable of regexs
     returns the union of all matches for each pattern given
     """
-    if hasattr(args, '__iter__'):
-        patterns = args
-    else:
-        patterns = [args,]
+    metric = kwargs['metric']
     metrics = []
-    with open(index_file, 'r') as ifd:
-        indexes = ifd.readlines()
-    for line in indexes:
-        for pattern in patterns:
-            match = re.search(pattern, line)
-            if match:
-                logger.info('    %s' % (line.strip()))
-                metrics.append(line.strip())
-    metrics = set(metrics)
+
+    if kwargs['regex']:
+        for i in index():
+            if re.search(metric, i):
+                metrics.append(i)
+    elif '*' in metric:
+        # Convert non-regex with wildcard to regex.
+        metric = re.escape(metric)
+        metric = metric.replace('\*', '[^.]*')
+        for i in index():
+            if re.search(metric, i):
+                metrics.append(i)
+    else:
+        # non-regex
+        if metric in index():
+            metrics.append(metric)
+
     return metrics
 
-def info(*args):
+
+def info(**kwargs):
     """
     Wrapper for `whisper-info.py metric`
+    Only works for singular, explicit metric, no regex, wildcards.
     """
     metricInfo = { 'archives': [] }
-    metric = args[0]
+    metric = kwargs['metric']
 
     cmd = [bins['info'], metric_path(metric)]
     s = subprocess.Popen(cmd, stdout=subprocess.PIPE)
@@ -96,15 +108,8 @@ def info(*args):
                 if ':' in line:
                     key, val = map(lambda s: s.strip(), line.split(':'))
                     metricInfo.update({ key: val })
-    logger.info(metricInfo)
+    #logger.info(metricInfo)
     return metricInfo
-
-
-def findall(path):
-    """
-    return list of all metrics that start with path
-    """
-    return search('^%s\.' % (path))
 
 
 def dump(*args):
@@ -131,25 +136,32 @@ def dump(*args):
             if (dateRange['max'] is None or
                    date > dateRange['max']):
                 dateRange['max'] = date
-    logger.info(' Range of dates: (%s, %s)' % (
-                datetime.fromtimestamp(dateRange['min']),
-                datetime.fromtimestamp(dateRange['max'])))
+    #logger.info(' Range of dates: (%s, %s)' % (
+    #            datetime.fromtimestamp(dateRange['min']),
+    #            datetime.fromtimestamp(dateRange['max'])))
 
-def resize(*args):
+def resize(**kwargs):
     """
     Wrapper for whisper-resize.py
     """
-    cmd = list(args)
-    cmd[0] = metric_path(cmd[0])
-    cmd.insert(0, bins['resize'])
-    try:
-        s = subprocess.check_call(cmd)
-    except IOError as ioe:
-        raise ioe
-    except subprocess.CalledProcessError as cpe:
-        raise cpe
+    ret = kwargs['params']
+    for metric in search(**kwargs):
+        fname = metric_path(metric)
+        cmd = [bins['resize'], fname] + ret
 
-def xff(*args):
+        try:
+            s = subprocess.check_call(cmd)
+        except IOError as ioe:
+            raise ioe
+        except subprocess.CalledProcessError as cpe:
+            raise cpe
+
+        try:
+            os.remove('%s.bak' %(fname))
+        except OSError:
+            pass
+
+def xff(**kwargs):
     """
     args: (metric, xFilesFactor)
     xFilesFactor is a float within range [0, 1]
@@ -158,17 +170,51 @@ def xff(*args):
     without respecifying the retention rates of the metric. This method
     allows you to do so by only supplying the xFilesFactor value.
     """
-    metric = args[0]
-    xffVal = args[1]
-    ret = []
-    logger.info(info(metric)['archives'])
-    for archive in info(metric)['archives']:
-        ret.append('%s:%s' % (archive['secondsPerPoint'],
-                              archive['points']))
-    resizeCmd = [metric, '--xFilesFactor=%s' % (xffVal)]
-    resizeCmd += ret
-    print resizeCmd
-    resize(*resizeCmd)
+    xffVal = kwargs['params'][0]
+    for metric in search(**kwargs):
+        ret = []
+        fname = metric_path(metric)
+        #logger.info(info(metric)['archives'])
+        for archive in info(metric=metric)['archives']:
+            ret.append('%s:%s' % (archive['secondsPerPoint'],
+                                  archive['points']))
+        resizeCmd = [   bins['resize'],
+                        fname,
+                        '--xFilesFactor=%s' % (xffVal)  ] + ret
+
+        try:
+            s = subprocess.check_call(resizeCmd)
+        except IOError as ioe:
+            raise ioe
+        except subprocess.CalledProcessError as cpe:
+            raise cpe
+
+        try:
+            os.remove('%s.bak' %(fname))
+        except OSError:
+            pass
+
+def agg(**kwargs):
+    """
+    Wrapper for whisper-set-aggregation-method.py
+    """
+    aggMethod = kwargs['params'][0]
+    for metric in search(**kwargs):
+        fname = metric_path(metric)
+        cmd = [bins['agg'], fname, aggMethod]
+
+        try:
+            s = subprocess.check_call(cmd)
+        except IOError as ioe:
+            raise ioe
+        except subprocess.CalledProcessError as cpe:
+            raise cpe
+
+        try:
+            os.remove('%s.bak' %(fname))
+        except OSError:
+            pass
+
 
 def metric_path(metric):
     """
@@ -183,30 +229,23 @@ def metric_path(metric):
     return os.path.join(whisper_root,
                         '%s.wsp' % (metric.replace('.', os.path.sep)))
 
-options = {
-    'index': index,
-    'search': search,
-    'info': info,
-    'resize': resize,
-    'xff': xff,
-    'dump': dump
-}
-
 def main():
-    from sys import argv
-    try:
-        options[argv[1]](*argv[2:])
-    except:
-        print """
-        whisperctl commands
-        -------------------
-            index       update whisper index
-            search      regex search of index for metrics
-            info        print whisper metric information
-            resize      change data retentions for metric
-            dump        print whisper database values to stdout
-        """
-        raise
+    commands = ['index', 'search', 'info', 'resize', 'xff', 'dump', 'agg']
+    parser = ArgumentParser()
+    parser.add_argument('command',
+                        metavar='COMMAND',
+                        choices=commands)
+    parser.add_argument('-e', dest='regex', action='store_true',
+                        help='METRIC is a regex')
+    parser.add_argument('metric',
+                        metavar='METRIC',
+                        nargs='?')
+    parser.add_argument('params',
+                        metavar='PARAM',
+                        nargs='*')
+    args = parser.parse_args()
+
+    print globals()[args.command](**args.__dict__)
 
 
 if __name__ == '__main__':
