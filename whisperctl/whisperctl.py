@@ -76,19 +76,19 @@ def search(**kwargs):
     metrics = []
 
     if kwargs['regex']:
-        for i in index().__list__():
+        for i in list(Index()):
             if re.search(metric, i):
                 metrics.append(i)
     elif '*' in metric:
         # Convert non-regex with wildcard to regex.
         metric = re.escape(metric)
         metric = metric.replace('\*', '[^.]*')
-        for i in index().__list__():
+        for i in list(Index()):
             if re.search(metric, i):
                 metrics.append(i)
     else:
         # non-regex
-        if metric in index().__list__():
+        if metric in list(Index()):
             metrics.append(metric)
 
     return metrics
