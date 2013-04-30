@@ -20,6 +20,14 @@ class MetricPath:
             ancestor = ancestor.parent
         return line
 
+    def dictify(self):
+        return {
+            'name': self.name,
+            'files': self.files,
+            'children': map(lambda c: c.dictify(), self.children)
+        }
+
+
 class Index:
     def __init__(self, storage='/opt/graphite/storage/whisper/'):
         self.storage = storage
@@ -53,5 +61,14 @@ class Index:
         for f in root.files:
             yield '.'.join(lineage + [f,])
 
+    def dictify(self):
+        return self.root.dictify()
+
+    def jsonify(self):
+        import json
+        return json.dumps(self.dictify())
+
 if __name__ == '__main__':
     i = Index()
+    di = i.dictify()
+    import pdb; pdb.set_trace()
