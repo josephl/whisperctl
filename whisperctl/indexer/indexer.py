@@ -59,4 +59,3 @@ class Index:
 
 if __name__ == '__main__':
     i = Index()
-    import pdb; pdb.set_trace()
