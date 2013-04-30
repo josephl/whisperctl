@@ -1,10 +1,18 @@
 #!/usr/bin/env python
 
 # whisperctl
+
 # Tools to make your graphite life easier
 # Wrappers for the whisper-*.py scripts which allow for
 # metrics to be specified as they are in graphite
-# tools: index, search, info, dump
+# tools: index, search, info, resize, agg, xff
+
+# Author: Joseph Lee <joseph@idealist.org>
+# Copyright (c) 2013 Action Without Borders
+# Developed at Idealist.org
+# This software may be distributed under the MIT License
+# See LICENSE for more information
+
 
 from datetime import datetime
 from argparse import ArgumentParser
@@ -16,7 +24,7 @@ import re
 
 #config = ConfigParser.SafeConfigParser()
 #config.read('whisperctl.conf')
-#
+
 #logging.basicConfig(level=logging.INFO)
 #logger = logging.getLogger(__name__)
 
@@ -112,33 +120,33 @@ def info(**kwargs):
     return metricInfo
 
 
-def dump(*args):
-    """
-    Wrapper for `whisper-dump.py metric`
-    Dumps all null values
-    """
-    metric = args[0]
-    cmd = [bins['dump'], metric_path(metric)]
-    s = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-    pattern = '^[0-9]+:[ \t]+(?P<date>[1-9][0-9]*),'\
-        '[ \t]+(?P<val>(-){0,1}([1-9][0-9]+|0[.][0-9]*))$'
-    dateRange = { 'min': None, 'max': None }
-    for line in s.stdout:
-        m = re.match(pattern, line)
-        if m:
-            d = m.groupdict()
-            date = int(d['date'])
-            #logger.info('%s  |  %s' % (
-            #    datetime.fromtimestamp(date), d['val']))
-            if (dateRange['min'] is None or
-                   date < dateRange['min']):
-                dateRange['min'] = date
-            if (dateRange['max'] is None or
-                   date > dateRange['max']):
-                dateRange['max'] = date
-    #logger.info(' Range of dates: (%s, %s)' % (
-    #            datetime.fromtimestamp(dateRange['min']),
-    #            datetime.fromtimestamp(dateRange['max'])))
+#def dump(**kwargs):
+#    """
+#    Wrapper for `whisper-dump.py metric`
+#    Dumps all null values
+#    """
+#    metric = kwargs['metric']
+#    cmd = [bins['dump'], metric_path(metric)]
+#    s = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+#    pattern = '^[0-9]+:[ \t]+(?P<date>[1-9][0-9]*),'\
+#        '[ \t]+(?P<val>(-){0,1}([1-9][0-9]+|0[.][0-9]*))$'
+#    dateRange = { 'min': None, 'max': None }
+#    for line in s.stdout:
+#        m = re.match(pattern, line)
+#        if m:
+#            d = m.groupdict()
+#            date = int(d['date'])
+#            #logger.info('%s  |  %s' % (
+#            #    datetime.fromtimestamp(date), d['val']))
+#            if (dateRange['min'] is None or
+#                   date < dateRange['min']):
+#                dateRange['min'] = date
+#            if (dateRange['max'] is None or
+#                   date > dateRange['max']):
+#                dateRange['max'] = date
+#    #logger.info(' Range of dates: (%s, %s)' % (
+#    #            datetime.fromtimestamp(dateRange['min']),
+#    #            datetime.fromtimestamp(dateRange['max'])))
 
 def resize(**kwargs):
     """
@@ -230,7 +238,7 @@ def metric_path(metric):
                         '%s.wsp' % (metric.replace('.', os.path.sep)))
 
 def main():
-    commands = ['index', 'search', 'info', 'resize', 'xff', 'dump', 'agg']
+    commands = ['index', 'search', 'info', 'resize', 'xff', 'agg']
     parser = ArgumentParser()
     parser.add_argument('command',
                         metavar='COMMAND',
