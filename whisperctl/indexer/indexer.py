@@ -27,13 +27,11 @@ class Index:
         self.root = self.create('', None, *self.walk.next())
 
     def __str__(self):
-        return '\n'.join(list(self))
+        return '\n'.join([m for m in list(self)])
 
     def __iter__(self):
         """Return sorted list of tree."""
-        ls = []
-        for metric in self.getList(self.root, ls):
-            yield metric
+        return self.getList(self.root)
     
     def create(self, name, parent, curdir, subdirs, curfiles):
         newPath = MetricPath(parent,
@@ -46,16 +44,14 @@ class Index:
 
         return newPath
 
-    def getList(self, root, ls):
+    def getList(self, root):
         for child in root.children:
-            self.getList(child, ls)
+            for i in self.getList(child):
+                yield i
 
         lineage = root.lineage()
         for f in root.files:
-            ls.append('.'.join(lineage + [f,]))
-
-        return ls
-
+            yield '.'.join(lineage + [f,])
 
 if __name__ == '__main__':
     i = Index()
