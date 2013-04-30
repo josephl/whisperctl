@@ -244,15 +244,18 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('command',
                         metavar='COMMAND',
-                        choices=commands)
+                        choices=commands,
+                        help=', '.join(commands))
     parser.add_argument('-e', dest='regex', action='store_true',
                         help='METRIC is a regex')
     parser.add_argument('metric',
                         metavar='METRIC',
-                        nargs='?')
+                        nargs='?',
+                        help="Graphite metric name, i.e.  'carbon.test.count'.")
     parser.add_argument('params',
                         metavar='PARAM',
-                        nargs='*')
+                        nargs='*',
+                        help='Option, dependent on command.')
     args = parser.parse_args()
 
     print globals()[args.command](**args.__dict__)
