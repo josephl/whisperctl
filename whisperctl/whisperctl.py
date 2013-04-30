@@ -16,6 +16,7 @@
 
 from datetime import datetime
 from argparse import ArgumentParser
+from indexer import Index
 import subprocess
 import os
 import re
@@ -46,23 +47,24 @@ def index(**kwargs):
     file structure to graphite metric naming conventions.
     Return list if all metrics in graphite format.
     """
-    wwalk = os.walk(whisper_root)
-    #metric = kwargs['metric']
+    #wwalk = os.walk(whisper_root)
+    ##metric = kwargs['metric']
 
-    metrics = []
-    for d in iter(wwalk):
-        pathto = d[0].replace(whisper_root, '', 1).lstrip('/')
-        for fname in d[2]:
-            if fname.endswith('.wsp'):
-                metricName = re.sub('\.wsp$', '', os.path.join(
-                        pathto, fname).replace('/', '.'))
-                metrics.append(metricName)
+    #metrics = []
+    #for d in iter(wwalk):
+    #    pathto = d[0].replace(whisper_root, '', 1).lstrip('/')
+    #    for fname in d[2]:
+    #        if fname.endswith('.wsp'):
+    #            metricName = re.sub('\.wsp$', '', os.path.join(
+    #                    pathto, fname).replace('/', '.'))
+    #            metrics.append(metricName)
 
-    # Write out metrics to index file
-    #with open(index_file, 'w') as ifd:
-    #    ifd.write('\n'.join(metrics))
+    ## Write out metrics to index file
+    ##with open(index_file, 'w') as ifd:
+    ##    ifd.write('\n'.join(metrics))
 
-    return metrics
+    #return metrics
+    return Index(whisper_root)
 
 def search(**kwargs):
     """
@@ -74,19 +76,19 @@ def search(**kwargs):
     metrics = []
 
     if kwargs['regex']:
-        for i in index():
+        for i in index().__list__():
             if re.search(metric, i):
                 metrics.append(i)
     elif '*' in metric:
         # Convert non-regex with wildcard to regex.
         metric = re.escape(metric)
         metric = metric.replace('\*', '[^.]*')
-        for i in index():
+        for i in index().__list__():
             if re.search(metric, i):
                 metrics.append(i)
     else:
         # non-regex
-        if metric in index():
+        if metric in index().__list__():
             metrics.append(metric)
 
     return metrics

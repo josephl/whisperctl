@@ -2,8 +2,8 @@ from setuptools import setup
 
 setup(
     name = 'whisperctl',
-    version = '0.1.1',
-    packages = ['whisperctl'],
+    version = '0.2.0',
+    packages = ['whisperctl', 'whisperctl.indexer'],
     author = 'Joseph Lee',
     author_email = 'josephl@cecs.pdx.edu',
     description = 'A tool for managing Whisper databases used in Graphite.',
