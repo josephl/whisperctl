@@ -42,9 +42,10 @@ class Index:
         return self.getList(self.root)
     
     def create(self, name, parent, curdir, subdirs, curfiles):
-        newPath = MetricPath(parent,
-                name,
+        # filter curfiles for improper filenames w/ a '.'
+        curfiles = filter(lambda y: '.' not in y,
                 map(lambda x: re.sub('\.wsp$', '', x), curfiles))
+        newPath = MetricPath(parent, name, curfiles)
         children = []
         for subdir in subdirs:
             children.append(self.create(subdir, newPath, *self.walk.next()))
@@ -71,4 +72,3 @@ class Index:
 if __name__ == '__main__':
     i = Index()
     di = i.dictify()
-    import pdb; pdb.set_trace()

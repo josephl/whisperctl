@@ -131,10 +131,10 @@ def clean(**kwargs):
         try:
             if os.stat(path).st_size == 0:
                 os.remove(path)
-                print 'Deleted %s' % (path)
                 count += 1
+                print 'Deleted %s' % (path)
         except OSError as ose:
-            raise
+            pass
     return 'Deleted %d corrupted metric files' % (count)
 
 #def dump(**kwargs):
