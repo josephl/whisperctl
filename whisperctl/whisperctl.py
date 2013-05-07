@@ -121,6 +121,21 @@ def info(**kwargs):
     #logger.info(metricInfo)
     return metricInfo
 
+def clean(**kwargs):
+    """Remove corrupted whisper files, 
+    currently only deletes those of size 0."""
+    count = 0
+    for i in list(Index()):
+        subPath = i.replace('.', os.sep) + '.wsp'
+        path = os.path.join(whisper_root, subPath)
+        try:
+            if os.stat(path).st_size == 0:
+                os.remove(path)
+                print 'Deleted %s' % (path)
+                count += 1
+        except OSError as ose:
+            raise
+    return 'Deleted %d corrupted metric files' % (count)
 
 #def dump(**kwargs):
 #    """
@@ -240,7 +255,7 @@ def metric_path(metric):
                         '%s.wsp' % (metric.replace('.', os.path.sep)))
 
 def main():
-    commands = ['index', 'search', 'info', 'resize', 'xff', 'agg']
+    commands = ['index', 'search', 'info', 'resize', 'xff', 'agg', 'clean']
     parser = ArgumentParser()
     parser.add_argument('command',
                         metavar='COMMAND',
